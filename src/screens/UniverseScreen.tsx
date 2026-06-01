@@ -11,23 +11,20 @@ import { LinearGradient } from 'expo-linear-gradient';
 
 import { SpaceBackground } from '../components/SpaceBackground';
 import { Starfield } from '../components/Starfield';
-import { CrystalOrb } from '../components/CrystalOrb';
-import { JournalSheet } from '../components/JournalSheet';
-import { useMemoryStore } from '../store/memoryStore';
-
-type OrbPosition = {
-  x: number;
-  y: number;
-};
-
-type MemoryEntry = {
-  id: string;
-  orbPosition: OrbPosition;
-};
+import CrystalOrb from '../components/CrystalOrb';
+import JournalSheet from './JournalSheet';
+import MemoryModal from './MemoryModal';
+import { useMemoryStore, MemoryEntry } from '../stores/memoryStore';
+import { Emotion } from '../constants/emotions';
 
 export default function UniverseScreen() {
-  const memories = useMemoryStore((state) => state.memories as MemoryEntry[]);
+  const entries = useMemoryStore((state) => state.entries);
+  const currentStreak = useMemoryStore((state) => state.currentStreak);
+  const addEntry = useMemoryStore((state) => state.addEntry);
+
   const [isJournalOpen, setIsJournalOpen] = useState(false);
+  const [selectedEntry, setSelectedEntry] = useState<MemoryEntry | null>(null);
+
   const pulseAnim = useRef(new Animated.Value(0.4)).current;
 
   useEffect(() => {
@@ -45,19 +42,23 @@ export default function UniverseScreen() {
         }),
       ]),
     );
-
     loop.start();
     return () => loop.stop();
   }, [pulseAnim]);
 
-  const memoryCount = memories.length;
-  const streakCount = useMemoryStore((state) => (state as { streak?: number }).streak ?? 7);
-  const hasMemories = memoryCount > 0;
-
   const memoryLabel = useMemo(
-    () => `${memoryCount} ${memoryCount === 1 ? 'memory' : 'memories'}`,
-    [memoryCount],
+    () => `${entries.length} ${entries.length === 1 ? 'memory' : 'memories'}`,
+    [entries.length],
   );
+
+  const handleSubmit = ({ note, emotion }: { note: string; emotion?: Emotion }) => {
+    addEntry(
+      note,
+      emotion?.label ?? 'Unknown',
+      emotion?.color ?? '#FFFFFF',
+    );
+    setIsJournalOpen(false);
+  };
 
   return (
     <View style={styles.container}>
@@ -79,35 +80,42 @@ export default function UniverseScreen() {
           <View style={styles.rightMeta}>
             <View style={styles.streakBadge}>
               <Text style={styles.streakEmoji}>🔥</Text>
-              <Text style={styles.streakCount}>{streakCount}</Text>
+              <Text style={styles.streakCount}>{currentStreak}</Text>
             </View>
             <Text style={styles.memoryMeta}>{memoryLabel}</Text>
           </View>
         </View>
       </SafeAreaView>
 
-      <View style={styles.orbCanvas}>
-        {memories.map((memory) => (
+      {/* Tap empty space to open journal */}
+      <Pressable
+        style={styles.orbCanvas}
+        onPress={() => setIsJournalOpen(true)}
+      >
+        {entries.map((entry) => (
           <View
-            key={memory.id}
+            key={entry.id}
             style={[
               styles.orbAnchor,
-              {
-                left: memory.orbPosition.x,
-                top: memory.orbPosition.y,
-              },
+              { left: entry.orbPosition.x, top: entry.orbPosition.y },
             ]}
           >
-            <CrystalOrb memory={memory} />
+            <CrystalOrb
+              size={56}
+              color={entry.color}
+              onPress={() => {
+                setSelectedEntry(entry);
+              }}
+            />
           </View>
         ))}
 
-        {!hasMemories && (
+        {entries.length === 0 && (
           <Animated.Text style={[styles.emptyStateText, { opacity: pulseAnim }]}>
-            Tap + to add your first memory
+            Tap anywhere to add your first memory
           </Animated.Text>
         )}
-      </View>
+      </Pressable>
 
       <View style={styles.fabContainer} pointerEvents="box-none">
         <Pressable
@@ -127,7 +135,17 @@ export default function UniverseScreen() {
         </Pressable>
       </View>
 
-      <JournalSheet visible={isJournalOpen} onClose={() => setIsJournalOpen(false)} />
+      <JournalSheet
+        visible={isJournalOpen}
+        onClose={() => setIsJournalOpen(false)}
+        onSubmit={handleSubmit}
+      />
+
+      <MemoryModal
+        entry={selectedEntry}
+        visible={selectedEntry !== null}
+        onClose={() => setSelectedEntry(null)}
+      />
     </View>
   );
 }

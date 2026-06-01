@@ -8,7 +8,6 @@ import {
   View,
 } from 'react-native';
 import { BlurView } from 'expo-blur';
-import { Ionicons } from '@expo/vector-icons';
 
 import CrystalOrb from '../components/CrystalOrb';
 
@@ -17,12 +16,12 @@ type MemoryEntry = {
   text: string;
   emotion: string;
   color: string;
-  date: string | number | Date;
-  aiReflection: string;
+  createdAt: string;
+  aiReflection?: string;
 };
 
 type MemoryModalProps = {
-  entry: MemoryEntry;
+  entry: MemoryEntry | null;
   visible: boolean;
   onClose: () => void;
 };
@@ -35,7 +34,6 @@ const MemoryModal = ({ entry, visible, onClose }: MemoryModalProps) => {
     if (visible) {
       opacity.setValue(0);
       scale.setValue(0.96);
-
       Animated.parallel([
         Animated.timing(opacity, {
           toValue: 1,
@@ -54,18 +52,18 @@ const MemoryModal = ({ entry, visible, onClose }: MemoryModalProps) => {
   }, [opacity, scale, visible]);
 
   const formattedDate = useMemo(() => {
-    const parsed = new Date(entry.date);
-
-    if (Number.isNaN(parsed.getTime())) {
-      return '';
-    }
-
+    if (!entry) return '';
+    const parsed = new Date(entry.createdAt);
+    if (Number.isNaN(parsed.getTime())) return '';
     return parsed.toLocaleDateString(undefined, {
       year: 'numeric',
       month: 'long',
       day: 'numeric',
     });
-  }, [entry.date]);
+  }, [entry]);
+
+  // Don't render if no entry
+  if (!entry) return null;
 
   return (
     <Modal transparent visible={visible} animationType="none" onRequestClose={onClose}>
@@ -79,10 +77,7 @@ const MemoryModal = ({ entry, visible, onClose }: MemoryModalProps) => {
         <Animated.View
           style={[
             styles.card,
-            {
-              opacity,
-              transform: [{ scale }],
-            },
+            { opacity, transform: [{ scale }] },
           ]}
         >
           <Pressable
@@ -92,11 +87,11 @@ const MemoryModal = ({ entry, visible, onClose }: MemoryModalProps) => {
             accessibilityRole="button"
             accessibilityLabel="Close memory"
           >
-            <Ionicons name="close" size={20} color="rgba(255,255,255,0.35)" />
+            <Text style={styles.closeIcon}>✕</Text>
           </Pressable>
 
           <View style={styles.orbWrap}>
-            <CrystalOrb size={68} color={entry.color} />
+            <CrystalOrb size={68} color={entry.color} onPress={onClose} />
           </View>
 
           <Text style={[styles.emotion, { color: entry.color }]}>{entry.emotion}</Text>
@@ -104,13 +99,15 @@ const MemoryModal = ({ entry, visible, onClose }: MemoryModalProps) => {
 
           <Text style={styles.entryText}>{entry.text}</Text>
 
-          <View style={styles.divider} />
-
-          <Text style={styles.reflectionLabel}>AI REFLECTION</Text>
-
-          <View style={styles.reflectionWrap}>
-            <Text style={styles.reflectionText}>{entry.aiReflection}</Text>
-          </View>
+          {!!entry.aiReflection && (
+            <>
+              <View style={styles.divider} />
+              <Text style={styles.reflectionLabel}>AI Reflection</Text>
+              <View style={styles.reflectionWrap}>
+                <Text style={styles.reflectionText}>{entry.aiReflection}</Text>
+              </View>
+            </>
+          )}
         </Animated.View>
       </View>
     </Modal>
@@ -143,6 +140,14 @@ const styles = StyleSheet.create({
     top: 14,
     right: 14,
     zIndex: 2,
+    width: 28,
+    height: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  closeIcon: {
+    color: 'rgba(255,255,255,0.35)',
+    fontSize: 16,
   },
   orbWrap: {
     alignItems: 'center',
@@ -153,6 +158,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontSize: 15,
     fontWeight: '700',
+    textTransform: 'capitalize',
     marginBottom: 6,
   },
   date: {

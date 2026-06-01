@@ -14,24 +14,7 @@ import Animated, {
   withSpring,
 } from 'react-native-reanimated';
 
-type Emotion = {
-  key: string;
-  label: string;
-  color: string;
-};
-
-const EMOTIONS: Emotion[] = [
-  { key: 'joy', label: 'Joy', color: '#FFD56B' },
-  { key: 'calm', label: 'Calm', color: '#7ED9B5' },
-  { key: 'love', label: 'Love', color: '#FF8FC6' },
-  { key: 'hopeful', label: 'Hopeful', color: '#8FA3FF' },
-  { key: 'grateful', label: 'Grateful', color: '#B8E986' },
-  { key: 'anxious', label: 'Anxious', color: '#F3A86D' },
-  { key: 'sad', label: 'Sad', color: '#72A0E8' },
-  { key: 'angry', label: 'Angry', color: '#FF6A6A' },
-  { key: 'tired', label: 'Tired', color: '#A79CFF' },
-  { key: 'focused', label: 'Focused', color: '#6BD0FF' },
-];
+import { EMOTIONS_LIST, Emotion } from '../constants/emotions';
 
 export type JournalSheetProps = {
   visible: boolean;
@@ -48,7 +31,8 @@ const JournalSheet = ({ visible, onClose, onSubmit }: JournalSheetProps) => {
 
   useEffect(() => {
     translateY.value = withSpring(visible ? 0 : CLOSED_TRANSLATE_Y, {
-      damping: 0.8,
+      damping: 18,
+      stiffness: 200,
     });
   }, [translateY, visible]);
 
@@ -59,11 +43,11 @@ const JournalSheet = ({ visible, onClose, onSubmit }: JournalSheetProps) => {
   const isDisabled = useMemo(() => note.trim().length === 0, [note]);
 
   const handleSubmit = () => {
-    if (isDisabled) {
-      return;
-    }
-
+    if (isDisabled) return;
     onSubmit?.({ note: note.trim(), emotion: selectedEmotion });
+    // Reset form after submit
+    setNote('');
+    setSelectedEmotion(undefined);
   };
 
   return (
@@ -81,7 +65,7 @@ const JournalSheet = ({ visible, onClose, onSubmit }: JournalSheetProps) => {
         <Text style={styles.title}>How are you feeling?</Text>
 
         <View style={styles.grid}>
-          {EMOTIONS.map((emotion) => {
+          {EMOTIONS_LIST.map((emotion) => {
             const selected = selectedEmotion?.key === emotion.key;
             return (
               <Pressable
@@ -91,7 +75,6 @@ const JournalSheet = ({ visible, onClose, onSubmit }: JournalSheetProps) => {
                 style={[
                   styles.emotionButton,
                   selected && {
-                    borderWidth: 2,
                     borderColor: emotion.color,
                     shadowColor: emotion.color,
                     shadowOpacity: 0.55,
@@ -112,6 +95,9 @@ const JournalSheet = ({ visible, onClose, onSubmit }: JournalSheetProps) => {
                     },
                   ]}
                 />
+                <Text style={[styles.emotionLabel, { color: selected ? emotion.color : 'rgba(255,255,255,0.4)' }]}>
+                  {emotion.label}
+                </Text>
               </Pressable>
             );
           })}
@@ -167,7 +153,7 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 32,
     paddingTop: 12,
     paddingHorizontal: 20,
-    paddingBottom: 22,
+    paddingBottom: 34,
     gap: 16,
   },
   handle: {
@@ -186,18 +172,18 @@ const styles = StyleSheet.create({
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    rowGap: 10,
+    gap: 8,
   },
   emotionButton: {
-    width: '19%',
-    aspectRatio: 1,
-    borderRadius: 999,
+    width: '18%',
     alignItems: 'center',
     justifyContent: 'center',
+    borderRadius: 12,
     borderWidth: 2,
     borderColor: 'transparent',
     backgroundColor: 'rgba(255,255,255,0.03)',
+    paddingVertical: 10,
+    gap: 6,
     minWidth: 44,
     minHeight: 44,
   },
@@ -205,6 +191,11 @@ const styles = StyleSheet.create({
     width: 16,
     height: 16,
     borderRadius: 8,
+  },
+  emotionLabel: {
+    fontSize: 9,
+    fontWeight: '500',
+    textAlign: 'center',
   },
   inputRow: {
     flexDirection: 'row',
